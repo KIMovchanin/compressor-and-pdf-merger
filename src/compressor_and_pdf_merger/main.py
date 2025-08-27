@@ -1,9 +1,12 @@
-from compressor_and_pdf_merger.core.detect import find_ffmpeg
-import subprocess, sys
+import sys
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from compressor_and_pdf_merger.ui.main_window import MainWindow
 
-ff = find_ffmpeg()
-if not ff:
-    print("FFmpeg не найден. Установите FFmpeg или добавьте его в PATH.")
-    sys.exit(1)
+def main():
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
 
-subprocess.run([ff, "-version"])
+if __name__ == '__main__':
+    main()
