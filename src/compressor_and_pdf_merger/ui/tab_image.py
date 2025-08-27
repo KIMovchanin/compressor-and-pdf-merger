@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import os
-from compressor_and_pdf_merger.services.images import compress_image_stub
+from compressor_and_pdf_merger.services.images import compress_image
 
 class ImageTab(QWidget):
     def __init__(self):
@@ -18,7 +18,7 @@ class ImageTab(QWidget):
         group_layout = QVBoxLayout()
 
         self.rb_max = QRadioButton("Максимальное сжатие")
-        self.rb_min = QRadioButton("Минимальная потеря качества")
+        self.rb_min = QRadioButton("Оптимальная потеря качества")
         self.rb_custom = QRadioButton("Свои настройки")
         self.rb_min.setChecked(True)
 
@@ -29,13 +29,18 @@ class ImageTab(QWidget):
         slider_row = QHBoxLayout()
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, 100)
-        self.slider.setValue(45)
+        # 5 - minimum changes
+        # 95 - maximum changes
+        self.slider.setValue(65)
         self.slider.setEnabled(False)
-        self.lbl_value = QLabel("Сжать на: 45%")
+        self.lbl_value = QLabel("Процент сжатия: 65%")
 
         slider_row.addWidget(self.slider)
         slider_row.addWidget(self.lbl_value)
         group_layout.addLayout(slider_row)
+
+        num_meaning = QLabel("Чем больше процент, тем хуже качество")
+        group_layout.addWidget(num_meaning)
 
         group.setLayout(group_layout)
         layout.addWidget(group)
@@ -67,7 +72,7 @@ class ImageTab(QWidget):
         layout.addWidget(self.btn_compress)
 
         self.rb_custom.toggled.connect(self.slider.setEnabled)
-        self.slider.valueChanged.connect(lambda text: self.lbl_value.setText(f"Сжать на: {text}%"))
+        self.slider.valueChanged.connect(lambda text: self.lbl_value.setText(f"Процент сжатия: {text}%"))
         self.btn_add.clicked.connect(self.on_add_files)
         self.btn_remove.clicked.connect(self.on_remove_selected)
         self.btn_clear.clicked.connect(self.file_list.clear)
@@ -94,7 +99,7 @@ class ImageTab(QWidget):
 
     def current_percent(self) -> int:
         if self.rb_max.isChecked():
-            return 70
+            return 100
         if self.rb_min.isChecked():
             return 20
         return self.slider.value()
@@ -123,27 +128,21 @@ class ImageTab(QWidget):
         mode = self.current_mode()
         percent = self.current_percent()
 
-        out_files = []
+        ok, fail = [], []
         for f in files:
-            new_path = compress_image_stub(f, out_dir, percent)
-            out_files.append(new_path)
+            try:
+                new_path = compress_image(f, out_dir, percent)
+                ok.append(new_path)
+            except Exception as e:
+                fail.append(f"{f}  -  {e}")
 
-        QMessageBox.information(
-            self,
-            "Готово",
-            f"Обработано файлов: {len(out_files)}\n"
-            f"Примеры:\n" + "\n".join(out_files[:5])
-        )
-
-        text = (
-                f"Режим: {mode}\n"
-                f"Сжать на: {percent}%\n"
-                f"Куда: {out_dir}\n"
-                f"Файлов: {len(files)}\n\n"
-                + "\n".join(files[:10]) + ("...\n" if len(files) > 10 else "")
-        )
-
-        QMessageBox.information(self, "Предварительный запуск", text)
+        ok, fail = [], []
+        for f in files:
+            try:
+                new_path = compress_image(f, out_dir, percent)
+                ok.append(new_path)
+            except Exception as e:
+                fail.append(f"{f}  -  {e}")
 
     def on_choose_out_dir(self):
         d = QFileDialog.getExistingDirectory(self, "Куда сохранить?")
