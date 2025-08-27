@@ -109,3 +109,67 @@ def compress_image(src: str, out_dir: str, percent: int) -> str:
         progressive=True,
     )
     return str(out_path)
+
+
+def resize_image(src: str, out_dir: str, *, scale_percent: int) -> str:
+    p = max(1, int(scale_percent))  # защита от 0 и мусора
+    src_path = Path(src)
+    out_dir_p = Path(out_dir)
+    out_dir_p.mkdir(parents=True, exist_ok=True)
+
+    img = safe_open(src_path)
+    if img is None:
+        raise RuntimeError(f"Не удалось открыть изображение: {src_path}")
+
+    w, h = img.size
+    new_w = max(1, (w * p) // 100)
+    new_h = max(1, (h * p) // 100)
+
+    img2 = ImageOps.exif_transpose(img).resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+    ext = src_path.suffix.lower()
+
+    if ext in {".jpg", ".jpeg"}:
+        out_path = out_dir_p / f"{src_path.stem}_resized.jpg"
+        img2.convert("RGB").save(
+            out_path,
+            format="JPEG",
+            quality=85,
+            optimize=True,
+            progressive=True,
+            subsampling="4:2:0",
+        )
+        return str(out_path)
+
+    if ext == ".webp":
+        out_path = out_dir_p / f"{src_path.stem}_resized.webp"
+        img2.convert("RGB").save(out_path, format="WEBP", quality=85, method=6)
+        return str(out_path)
+
+    if ext in {".png", ".bmp", ".tif", ".tiff"}:
+        if not has_alpha(img2):
+            out_path = out_dir_p / f"{src_path.stem}_resized.jpg"
+            img2.convert("RGB").save(
+                out_path,
+                format="JPEG",
+                quality=85,
+                optimize=True,
+                progressive=True,
+                subsampling="4:2:0",
+            )
+            return str(out_path)
+        else:
+            out_path = out_dir_p / f"{src_path.stem}_resized.png"
+            img2.save(out_path, format="PNG", optimize=True)
+            return str(out_path)
+
+    out_path = out_dir_p / f"{src_path.stem}_resized.jpg"
+    img2.convert("RGB").save(
+        out_path,
+        format="JPEG",
+        quality=85,
+        optimize=True,
+        progressive=True,
+        subsampling="4:2:0",
+    )
+    return str(out_path)
