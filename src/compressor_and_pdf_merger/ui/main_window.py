@@ -1,4 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QTabWidget, QVBoxLayout, QLabel
+from .tab_image import ImageTab
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -15,12 +18,13 @@ class MainWindow(QMainWindow):
         pdf_tab.setLayout(pdf_layout)
         tabs.addTab(pdf_tab, "PDF")
 
-        # image tab
-        image_tab = QWidget()
-        image_layout = QVBoxLayout()
-        image_layout.addWidget(QLabel("Здесь будет работа с изображениями"))
-        image_tab.setLayout(image_layout)
-        tabs.addTab(image_tab, "Фото")
+        tabs.addTab(ImageTab(), "Фото")
+        # # image tab
+        # image_tab = QWidget()
+        # image_layout = QVBoxLayout()
+        # image_layout.addWidget(QLabel("Здесь будет работа с изображениями"))
+        # image_tab.setLayout(image_layout)
+        # tabs.addTab(image_tab, "Фото")
 
         # video tab
         video_tab = QWidget()
