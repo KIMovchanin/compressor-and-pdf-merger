@@ -2,11 +2,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QGroupBox, QRadioButton,
     QHBoxLayout, QSlider, QLabel, QPushButton,
     QListWidget, QFileDialog, QMessageBox,
-    QLineEdit, QInputDialog
+    QLineEdit, QInputDialog, QCheckBox, QDialog,
+    QComboBox, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt
 import os
-from compressor_and_pdf_merger.services.images import compress_image, resize_image
+from compressor_and_pdf_merger.services.images import compress_image, resize_image, ConvertOptions, convert_image_format
 
 
 class ImageTab(QWidget):
@@ -32,9 +33,9 @@ class ImageTab(QWidget):
         self.slider.setRange(0, 100)
         # 5 - minimum changes
         # 95 - maximum changes
-        self.slider.setValue(65)
+        self.slider.setValue(20)
         self.slider.setEnabled(False)
-        self.lbl_value = QLabel("Процент сжатия: 65%")
+        self.lbl_value = QLabel("Процент сжатия: 20%")
 
         slider_row.addWidget(self.slider)
         slider_row.addWidget(self.lbl_value)
@@ -49,9 +50,9 @@ class ImageTab(QWidget):
         self.btn_remove = QPushButton("Удалить выбранные")
         self.btn_clear = QPushButton("Очистить список")
 
-        layout.addWidget(self.btn_add)
-        layout.addWidget(self.btn_remove)
-        layout.addWidget(self.btn_clear)
+        btn_row.addWidget(self.btn_add)
+        btn_row.addWidget(self.btn_remove)
+        btn_row.addWidget(self.btn_clear)
 
         layout.addLayout(btn_row)
 
@@ -66,12 +67,17 @@ class ImageTab(QWidget):
         out_row.addWidget(btn_browse)
         layout.addLayout(out_row)
 
+        self.cb_strip_meta = QCheckBox("Удалить мета-данные (геопозиция, дата и т.п.)")
+        layout.addWidget(self.cb_strip_meta)
 
         self.btn_compress = QPushButton("Сжать")
         layout.addWidget(self.btn_compress)
 
         self.btn_resize = QPushButton("Изменить размер")
         layout.addWidget(self.btn_resize)
+
+        self.btn_format = QPushButton("Изменить формат")
+        layout.addWidget(self.btn_format)
 
         self.rb_custom.toggled.connect(self.slider.setEnabled)
         self.slider.valueChanged.connect(lambda text: self.lbl_value.setText(f"Процент сжатия: {text}%"))
@@ -85,6 +91,8 @@ class ImageTab(QWidget):
         self.rb_min.toggled.connect(self._sync_slider_state)
         self.rb_custom.toggled.connect(self._sync_slider_state)
         self._sync_slider_state()
+        self.btn_format.clicked.connect(self.on_format_clicked)
+
 
 
     def on_add_files(self):
@@ -169,6 +177,17 @@ class ImageTab(QWidget):
         QMessageBox.information(self, title, "\n".join(msg))
 
 
+    def _ask_animated_confirm(self) -> bool:
+        reply = QMessageBox.question(
+            self,
+            "Анимация",
+            "Выбран анимированный файл. Обработать только первый кадр?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes
+        )
+        return reply == QMessageBox.StandardButton.Yes
+
+
     def on_compress_clicked(self):
         data = self._get_files_and_outdir()
         if not data:
@@ -207,3 +226,63 @@ class ImageTab(QWidget):
         )
         self._show_result("Изменение размера завершено", ok_list, fail)
 
+    def on_format_clicked(self):
+        data = self._get_files_and_outdir()
+        if not data:
+            return
+        files, out_dir = data
+
+        dlg = ImageFormatDialog(self, files_count=len(files))
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        target = dlg.selected_format()
+        use_compress = dlg.apply_compression()
+        percent = self.current_percent() if use_compress else None
+        strip_meta = getattr(self, "cb_strip_meta", None)
+        strip_meta = bool(strip_meta.isChecked()) if strip_meta else False
+
+        opts = ConvertOptions(
+            target=target,
+            apply_percent=percent,
+            strip_metadata=strip_meta,
+        )
+
+        ok, fail = self._apply_to_files(
+            files,
+            lambda f: convert_image_format(
+                f, out_dir, opts, on_animated_confirm=self._ask_animated_confirm
+            )
+        )
+        self._show_result("Изменение формата завершено", ok, fail)
+
+
+class ImageFormatDialog(QDialog):
+    def __init__(self, parent=None, files_count: int = 0):
+        super().__init__(parent)
+        self.setWindowTitle("Изменить формат")
+        layout = QVBoxLayout(self)
+
+        self.combo = QComboBox()
+        items = [("JPEG (.jpg)", "jpeg"), ("PNG (.png)", "png"), ("WebP (.webp)", "webp"), ("TIFF (.tiff)", "tiff")]
+        for text, data in items:
+            self.combo.addItem(text, userData=data)
+        layout.addWidget(QLabel(f"Будет обработано файлов: {files_count}"))
+        layout.addWidget(QLabel("Формат назначения:"))
+        layout.addWidget(self.combo)
+
+        self.cb_apply_compress = QCheckBox("Применить текущие настройки сжатия")
+        self.cb_apply_compress.setChecked(False)
+        layout.addWidget(self.cb_apply_compress)
+
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        layout.addWidget(btns)
+
+    def selected_format(self) -> str:
+        # "jpeg" "png" "webp" "tiff"
+        return self.combo.currentData()
+
+    def apply_compression(self) -> bool:
+        return self.cb_apply_compress.isChecked()
