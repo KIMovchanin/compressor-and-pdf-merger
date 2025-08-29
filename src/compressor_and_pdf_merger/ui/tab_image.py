@@ -5,12 +5,15 @@ from PyQt6.QtWidgets import (
     QLineEdit, QInputDialog, QCheckBox, QDialog,
     QComboBox, QDialogButtonBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 import os
 from compressor_and_pdf_merger.services.images import compress_image, resize_image, ConvertOptions, convert_image_format
+from pathlib import Path
+from .tab_history import HistoryTab
 
 
 class ImageTab(QWidget):
+    entry_logged = pyqtSignal(str)
     def __init__(self):
         super().__init__()
 
@@ -94,7 +97,6 @@ class ImageTab(QWidget):
         self.btn_format.clicked.connect(self.on_format_clicked)
 
 
-
     def on_add_files(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
@@ -158,12 +160,14 @@ class ImageTab(QWidget):
         return files, out_dir
 
 
-    def _apply_to_files(self, files: list[str], func) -> tuple[list[str], list[str]]:
+    def _apply_to_files(self, files: list[str], func, on_success=None) -> tuple[list[str], list[str]]:
         ok, fail = [], []
         for f in files:
             try:
                 out_path = func(f)
                 ok.append(out_path)
+                if on_success:
+                    on_success(f, out_path)
             except Exception as e:
                 fail.append(f"{f} — {e}")
         return ok, fail
@@ -187,26 +191,44 @@ class ImageTab(QWidget):
         )
         return reply == QMessageBox.StandardButton.Yes
 
+    def _run_batch(
+            self,
+            title: str,
+            files: list[str],
+            func,
+            log_template: str
+    ):
+        ok, fail = self._apply_to_files(
+            files,
+            func,
+            on_success=lambda src, outp: self.entry_logged.emit(
+                log_template.format(name=Path(src).name, out=outp)
+            )
+        )
+        self._show_result(title, ok, fail)
+
 
     def on_compress_clicked(self):
         data = self._get_files_and_outdir()
         if not data:
             return
         files, out_dir = data
-
         percent = self.current_percent()
+        strip = self.cb_strip_meta.isChecked()
 
-        ok, fail = self._apply_to_files(
+        self._run_batch(
+            "Сжатие завершено",
             files,
-            lambda f: compress_image(f, out_dir, percent)
+            lambda f: compress_image(f, out_dir, percent, strip_metadata=strip),
+            'Из вкладки «Фото»: сжатие "{name}". Сохранено в: "{out}".'
         )
-        self._show_result("Сжатие завершено", ok, fail)
 
 
     def on_choose_out_dir(self):
         d = QFileDialog.getExistingDirectory(self, "Куда сохранить?")
         if d:
             self.out_dir.setText(d)
+
 
     def on_resize_clicked(self):
         data = self._get_files_and_outdir()
@@ -220,11 +242,15 @@ class ImageTab(QWidget):
         if not ok:
             return
 
-        ok_list, fail = self._apply_to_files(
+        strip = self.cb_strip_meta.isChecked()
+
+        self._run_batch(
+            "Изменение размера завершено",
             files,
-            lambda f: resize_image(f, out_dir, scale_percent=percent)
+            lambda f: resize_image(f, out_dir, scale_percent=percent, strip_metadata=strip),
+            'Из вкладки «Фото»: изменение размера "{name}". Сохранено в: "{out}".'
         )
-        self._show_result("Изменение размера завершено", ok_list, fail)
+
 
     def on_format_clicked(self):
         data = self._get_files_and_outdir()
@@ -239,23 +265,20 @@ class ImageTab(QWidget):
         target = dlg.selected_format()
         use_compress = dlg.apply_compression()
         percent = self.current_percent() if use_compress else None
-        strip_meta = getattr(self, "cb_strip_meta", None)
-        strip_meta = bool(strip_meta.isChecked()) if strip_meta else False
+        strip = self.cb_strip_meta.isChecked()
 
         opts = ConvertOptions(
             target=target,
             apply_percent=percent,
-            strip_metadata=strip_meta,
+            strip_metadata=strip,
         )
 
-        ok, fail = self._apply_to_files(
+        self._run_batch(
+            "Изменение формата завершено",
             files,
-            lambda f: convert_image_format(
-                f, out_dir, opts, on_animated_confirm=self._ask_animated_confirm
-            )
+            lambda f: convert_image_format(f, out_dir, opts, on_animated_confirm=self._ask_animated_confirm),
+            'Из вкладки «Фото»: изменение формата "{name}". Сохранено в: "{out}".'
         )
-        self._show_result("Изменение формата завершено", ok, fail)
-
 
 class ImageFormatDialog(QDialog):
     def __init__(self, parent=None, files_count: int = 0):

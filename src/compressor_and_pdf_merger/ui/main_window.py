@@ -1,6 +1,13 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QTabWidget, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import (
+    QMainWindow, QWidget, QTabWidget,
+    QVBoxLayout, QLabel
+)
+from .tab_history import HistoryTab
 from .tab_image import ImageTab
-
+from .tab_settings import SettingsTab
+from .tab_pdf import PDFTab
+from .tab_audio import AudioTab
+from .tab_video import VideoTab
 
 
 class MainWindow(QMainWindow):
@@ -10,34 +17,20 @@ class MainWindow(QMainWindow):
         self.resize(800, 600)
 
         tabs = QTabWidget()
-
-        # pdf tab
-        pdf_tab = QWidget()
-        pdf_layout = QVBoxLayout()
-        pdf_layout.addWidget(QLabel("Здесь будет работа с PDF"))
-        pdf_tab.setLayout(pdf_layout)
-        tabs.addTab(pdf_tab, "PDF")
-
-        tabs.addTab(ImageTab(), "Фото")
-        # # image tab
-        # image_tab = QWidget()
-        # image_layout = QVBoxLayout()
-        # image_layout.addWidget(QLabel("Здесь будет работа с изображениями"))
-        # image_tab.setLayout(image_layout)
-        # tabs.addTab(image_tab, "Фото")
-
-        # video tab
-        video_tab = QWidget()
-        video_layout = QVBoxLayout()
-        video_layout.addWidget(QLabel("Здесь будет работа с видео"))
-        video_tab.setLayout(video_layout)
-        tabs.addTab(video_tab, "Видео")
-
-        # audio tab
-        audio_tab = QWidget()
-        audio_layout = QVBoxLayout()
-        audio_layout.addWidget(QLabel("Здесь будет работа с аудио"))
-        audio_tab.setLayout(audio_layout)
-        tabs.addTab(audio_tab, "Аудио")
-
         self.setCentralWidget(tabs)
+
+        self.pdf_tab = PDFTab()
+        self.image_tab = ImageTab()
+        self.video_tab = VideoTab()
+        self.audio_tab = AudioTab()
+        self.history_tab = HistoryTab()
+        self.settings_tab = SettingsTab()
+
+        tabs.addTab(self.pdf_tab, "PDF")
+        tabs.addTab(self.image_tab, "Фото")
+        tabs.addTab(self.video_tab, "Видео")
+        tabs.addTab(self.audio_tab, "Аудио")
+        tabs.addTab(self.history_tab, "История")
+        tabs.addTab(self.settings_tab, "Настройки")
+
+        self.image_tab.entry_logged.connect(self.history_tab.add_entry)
