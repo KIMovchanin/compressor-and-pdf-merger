@@ -210,7 +210,7 @@ def resize_image(src: str, out_dir: str, *, scale_percent: int, strip_metadata: 
 
     image = ImageOps.exif_transpose(img)
 
-    w, h = img.size
+    w, h = image.size
     new_w = max(1, (w * p) // 100)
     new_h = max(1, (h * p) // 100)
     image_resize = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
@@ -327,10 +327,11 @@ def _to_jpeg(img: Image.Image, out_path: Path, quality: int, opts: ConvertOption
     )
 
 def _to_png(img: Image.Image, out_path: Path, opts: ConvertOptions, apply_percent: Optional[int] = None) -> None:
-    if apply_percent is not None and not has_alpha(ImageOps.exif_transpose(img)):
+    image = ImageOps.exif_transpose(img)
+    if apply_percent is not None and not has_alpha(image):
         p = max(0, min(100, int(apply_percent)))
-        colors = max(16, 256 - p * 2)  # линейно: 256..16
-        pal = ImageOps.exif_transpose(img).convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT)
+        colors = max(16, min(256, int(256 - p * (256 - 16) / 100)))
+        pal = image.convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT, dither=Image.FLOYDSTEINBERG)
         pal.save(
             out_path,
             format="PNG",
@@ -340,7 +341,7 @@ def _to_png(img: Image.Image, out_path: Path, opts: ConvertOptions, apply_percen
         )
         return
 
-    ImageOps.exif_transpose(img).save(
+    image.save(
         out_path,
         format="PNG",
         optimize=True,
@@ -393,7 +394,7 @@ def _exif_without_orientation(img: Image.Image) -> bytes | None:
         return None
 
 
-def convert_image_format(src: str, out_dir: str, options: ConvertOptions, *, on_animated_confirm: Optional[Callable[[], bool]] = None, strip_metadata: bool = False) -> str:
+def convert_image_format(src: str, out_dir: str, options: ConvertOptions, *, on_animated_confirm: Optional[Callable[[], bool]] = None) -> str:
     src_path = Path(src)
     out_dir_p = Path(out_dir)
     out_dir_p.mkdir(parents=True, exist_ok=True)
