@@ -328,6 +328,7 @@ def _to_jpeg(img: Image.Image, out_path: Path, quality: int, opts: ConvertOption
 
 def _to_png(img: Image.Image, out_path: Path, opts: ConvertOptions, apply_percent: Optional[int] = None) -> None:
     image = ImageOps.exif_transpose(img)
+
     if apply_percent is not None and not has_alpha(image):
         p = max(0, min(100, int(apply_percent)))
         colors = max(16, min(256, int(256 - p * (256 - 16) / 100)))
