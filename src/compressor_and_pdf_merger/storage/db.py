@@ -6,7 +6,7 @@ from typing import Iterable, Tuple
 from datetime import datetime
 
 APP_NAME = "CompressorAndPDFMerger"
-APP_AUTHOR = "YourOrgOrName"
+APP_AUTHOR = "User"
 
 _conn: sqlite3.Connection | None = None
 

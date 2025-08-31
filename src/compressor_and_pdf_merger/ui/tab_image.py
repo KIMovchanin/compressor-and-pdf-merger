@@ -1,3 +1,5 @@
+from functools import partial
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QGroupBox, QRadioButton,
     QHBoxLayout, QSlider, QLabel, QPushButton,
@@ -9,11 +11,13 @@ from PyQt6.QtCore import Qt, pyqtSignal
 import os
 from compressor_and_pdf_merger.services.images import compress_image, resize_image, ConvertOptions, convert_image_format
 from pathlib import Path
-from .tab_history import HistoryTab
+from compressor_and_pdf_merger.storage import db
+from typing import Callable
 
 
 class ImageTab(QWidget):
     entry_logged = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
 
@@ -191,20 +195,29 @@ class ImageTab(QWidget):
         )
         return reply == QMessageBox.StandardButton.Yes
 
-    def _run_batch(
-            self,
-            title: str,
-            files: list[str],
-            func,
-            log_template: str
-    ):
-        ok, fail = self._apply_to_files(
-            files,
-            func,
-            on_success=lambda src, outp: self.entry_logged.emit(
-                log_template.format(name=Path(src).name, out=outp)
-            )
+
+    @staticmethod
+    def title_to_action(title: str) -> str:
+        if "Сжатие" in title: return "сжатие"
+        if "размера" in title: return "изменение размера"
+        if "формата" in title: return "изменение формата"
+        return title.lower()
+
+
+    def _handle_success(self, title: str, log_template: str, src: str, outp: str):
+        self.entry_logged.emit(log_template.format(name=Path(src).name, out=outp))
+
+        db.add_history(
+            tab="Фото",
+            action=self.title_to_action(title),
+            src_name=Path(src).name,
+            out_path=outp,
         )
+
+
+    def _run_batch(self, title: str, files: list[str], func: Callable[[str], str], log_template: str) -> None:
+        on_success = partial(self._handle_success, title, log_template)
+        ok, fail = self._apply_to_files(files, func, on_success=on_success)
         self._show_result(title, ok, fail)
 
 
