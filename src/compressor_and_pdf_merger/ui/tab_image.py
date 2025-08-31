@@ -5,14 +5,15 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QSlider, QLabel, QPushButton,
     QListWidget, QFileDialog, QMessageBox,
     QLineEdit, QInputDialog, QCheckBox, QDialog,
-    QComboBox, QDialogButtonBox
+    QComboBox, QDialogButtonBox, QProgressDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 import os
 from compressor_and_pdf_merger.services.images import compress_image, resize_image, ConvertOptions, convert_image_format
 from pathlib import Path
 from compressor_and_pdf_merger.storage import db
 from typing import Callable
+from compressor_and_pdf_merger.ui.worker import BatchWorker
 
 
 class ImageTab(QWidget):
@@ -164,17 +165,17 @@ class ImageTab(QWidget):
         return files, out_dir
 
 
-    def _apply_to_files(self, files: list[str], func, on_success=None) -> tuple[list[str], list[str]]:
-        ok, fail = [], []
-        for f in files:
-            try:
-                out_path = func(f)
-                ok.append(out_path)
-                if on_success:
-                    on_success(f, out_path)
-            except Exception as e:
-                fail.append(f"{f} — {e}")
-        return ok, fail
+    # def _apply_to_files(self, files: list[str], func, on_success=None) -> tuple[list[str], list[str]]:
+    #     ok, fail = [], []
+    #     for f in files:
+    #         try:
+    #             out_path = func(f)
+    #             ok.append(out_path)
+    #             if on_success:
+    #                 on_success(f, out_path)
+    #         except Exception as e:
+    #             fail.append(f"{f} — {e}")
+    #     return ok, fail
 
 
     def _show_result(self, title: str, ok: list[str], fail: list[str]) -> None:
@@ -204,7 +205,7 @@ class ImageTab(QWidget):
         return title.lower()
 
 
-    def _handle_success(self, title: str, log_template: str, src: str, outp: str):
+    def _handle_success(self, title: str, log_template: str, src: str, outp: str) -> None:
         self.entry_logged.emit(log_template.format(name=Path(src).name, out=outp))
 
         db.add_history(
@@ -216,9 +217,62 @@ class ImageTab(QWidget):
 
 
     def _run_batch(self, title: str, files: list[str], func: Callable[[str], str], log_template: str) -> None:
-        on_success = partial(self._handle_success, title, log_template)
-        ok, fail = self._apply_to_files(files, func, on_success=on_success)
-        self._show_result(title, ok, fail)
+        if not files:
+            self._show_result(title, [], [])
+            return
+
+        self._set_controls_enabled(False)
+
+        dialog = QProgressDialog(f"{title}...", "Отмена", 0, 100, self)
+        dialog.setWindowTitle(title)
+        dialog.setAutoClose(False)
+        dialog.setAutoReset(False)
+        dialog.setValue(0)
+
+        thread = QThread(self)
+        worker = BatchWorker(files, func)
+        worker.moveToThread(thread)
+
+        ok: list[str] = []
+        fail: list[str] = []
+
+        worker.progress.connect(dialog.setValue)
+
+        def on_done(src: str, outp: str):
+            ok.append(outp)
+            self._handle_success(title, log_template, src, outp)
+
+        def on_fail(src: str, err: str):
+            fail.append(f"{src} - {err}")
+
+        worker.file_done.connect(on_done)
+        worker.file_fail.connect(on_fail)
+
+        def on_finished():
+            dialog.close()
+            self._set_controls_enabled(True)
+            self._show_result(title, ok, fail)
+            thread.quit()
+            thread.wait()
+            worker.deleteLater()
+            thread.deleteLater()
+
+        worker.finished.connect(on_finished)
+
+        dialog.canceled.connect(worker.cancel)
+
+        thread.started.connect(worker.run)
+        thread.start()
+        dialog.show()
+
+
+    def _set_controls_enabled(self, enabled: bool):
+        for w in [
+            self.btn_add, self.btn_remove, self.btn_clear,
+            self.btn_compress, self.btn_resize, self.btn_format,
+            self.slider, self.rb_max, self.rb_min, self.rb_custom
+        ]:
+            w.setEnabled(enabled)
 
 
     def on_compress_clicked(self):
@@ -230,7 +284,7 @@ class ImageTab(QWidget):
         strip = self.cb_strip_meta.isChecked()
 
         self._run_batch(
-            "Сжатие завершено",
+            "Сжатие...",
             files,
             lambda f: compress_image(f, out_dir, percent, strip_metadata=strip),
             'Из вкладки «Фото»: сжатие "{name}". Сохранено в: "{out}".'
@@ -250,7 +304,7 @@ class ImageTab(QWidget):
         files, out_dir = data
 
         percent, ok = QInputDialog.getInt(
-            self, "Масштаб", "Во сколько процентов от исходника?", 50, 1, 1000, 1
+            self, "Масштаб", "Cколько процентов от исходника оставить?", 50, 1, 1000, 1
         )
         if not ok:
             return
@@ -258,7 +312,7 @@ class ImageTab(QWidget):
         strip = self.cb_strip_meta.isChecked()
 
         self._run_batch(
-            "Изменение размера завершено",
+            "Изменение размера...",
             files,
             lambda f: resize_image(f, out_dir, scale_percent=percent, strip_metadata=strip),
             'Из вкладки «Фото»: изменение размера "{name}". Сохранено в: "{out}".'
@@ -287,7 +341,7 @@ class ImageTab(QWidget):
         )
 
         self._run_batch(
-            "Изменение формата завершено",
+            "Изменение формата...",
             files,
             lambda f: convert_image_format(f, out_dir, opts, on_animated_confirm=self._ask_animated_confirm),
             'Из вкладки «Фото»: изменение формата "{name}". Сохранено в: "{out}".'
