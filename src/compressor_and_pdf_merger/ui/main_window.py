@@ -8,6 +8,7 @@ from .tab_settings import SettingsTab
 from .tab_pdf import PDFTab
 from .tab_audio import AudioTab
 from .tab_video import VideoTab
+from compressor_and_pdf_merger.services.settings import Settings
 
 
 class MainWindow(QMainWindow):
@@ -15,6 +16,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Compressor & PDF Merger")
         self.resize(800, 600)
+
+        geo = Settings.window_geometry()
+        if geo:
+            self.restoreGeometry(geo)
 
         tabs = QTabWidget()
         self.setCentralWidget(tabs)
@@ -33,4 +38,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.history_tab, "История")
         tabs.addTab(self.settings_tab, "Настройки")
 
-        self.image_tab.entry_logged.connect(self.history_tab.add_entry)
+
+    def closeEvent(self, e):
+        Settings.set_window_geometry(self.saveGeometry())
+        super().closeEvent(e)

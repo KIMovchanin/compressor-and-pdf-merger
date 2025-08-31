@@ -14,6 +14,7 @@ from pathlib import Path
 from compressor_and_pdf_merger.storage import db
 from typing import Callable
 from compressor_and_pdf_merger.ui.worker import BatchWorker
+from compressor_and_pdf_merger.services.settings import Settings
 
 
 class ImageTab(QWidget):
@@ -100,6 +101,34 @@ class ImageTab(QWidget):
         self.rb_custom.toggled.connect(self._sync_slider_state)
         self._sync_slider_state()
         self.btn_format.clicked.connect(self.on_format_clicked)
+
+        self._load_prefs()
+        self._wire_prefs_autosave()
+
+
+    def _load_prefs(self):
+        d = Settings.images_default_dir()
+        if d:
+            self.out_dir.setText(d)
+
+        self.cb_strip_meta.setChecked(Settings.images_strip_meta())
+
+        mode = Settings.images_mode()
+        if mode == "max": self.rb_max.setChecked(True)
+        elif mode == "custom": self.rb_custom.setChecked(True)
+        else: self.rb_min.setChecked(True)
+
+        self.slider.setValue(Settings.images_percent())
+        self._sync_slider_state()
+
+
+    def _wire_prefs_autosave(self):
+        self.cb_strip_meta.toggled.connect(Settings.set_images_strip_meta)
+        self.slider.valueChanged.connect(Settings.set_images_percent)
+        self.rb_max.toggled.connect(lambda v: v and Settings.set_images_mode("max"))
+        self.rb_min.toggled.connect(lambda v: v and Settings.set_images_mode("min"))
+        self.rb_custom.toggled.connect(lambda v: v and Settings.set_images_mode("custom"))
+        self.out_dir.textChanged.connect(Settings.set_images_default_dir)
 
 
     def on_add_files(self):
