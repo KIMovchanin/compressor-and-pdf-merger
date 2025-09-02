@@ -1,0 +1,84 @@
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.idea/
+.vscode/
+*.iml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Виртуальные окружения
+.venv/
+.venv*/
+venv/
+ENV/
+env/
+.conda/
+.conda_env/
+
+# Пакетирование/сборка
+build/
+dist/
+pip-wheel-metadata/
+.eggs/
+*.egg
+*.egg-info/
+site/
+.tox/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.pytype/
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Конфиги/секреты
+.env
+.env.*
+*.secret
+*.key
+
+# --- PyInstaller / Nuitka ---
+# ВАЖНО: .spec лучше коммитить; поэтому НЕ игнорируем *.spec
+# *.spec
+
+# Кеши и временные артефакты
+.nuitka-cache/
+onefile-build/
+*.manifest
+
+# --- Установщики / бинарники ---
+# Итоговые инсталляторы и EXE не храним в git
+*.exe
+*.msi
+*.msix
+*.msixbundle
+
+# Inno Setup выходная папка (если используем "installer/Output")
+installer/Output*/
+Output*/
+
+# Внешние бинарники (если складываете в bin/)
+bin/*
+!bin/.gitkeep
+!bin/README.md
+
+# Документация Sphinx (если есть)
+docs/_build/
