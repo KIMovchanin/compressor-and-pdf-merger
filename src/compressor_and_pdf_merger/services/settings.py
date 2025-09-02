@@ -76,3 +76,25 @@ class Settings:
     @classmethod
     def set_video_default_dir(cls, path: str) -> None:
         cls._s.setValue("video/default_out_dir", path)
+
+
+    # Audio
+    @classmethod
+    def audio_default_dir(cls) -> str:
+        return cls._s.value("audio/default_out_dir", "", type=str)
+
+    @classmethod
+    def set_audio_default_dir(cls, path: str) -> None:
+        cls._s.setValue("audio/default_out_dir", path or "")
+
+    @classmethod
+    def audio_default_codec(cls) -> str:
+        # opus | aac | mp3 | flac
+        return cls._s.value("audio/default_codec", "opus", type=str).lower()
+
+    @classmethod
+    def set_audio_default_codec(cls, codec: str) -> None:
+        c = (codec or "").lower()
+        if c not in ("opus", "aac", "mp3", "flac"):
+            c = "opus"
+        cls._s.setValue("audio/default_codec", c)

@@ -290,7 +290,7 @@ class VideoTab(QWidget):
             )
 
             name = Path(files[0]).name
-            log_template = 'Из вкладки «Видео»: CRF={}, preset={}, codec={}, {}{}{}"{{name}}" -> "{{out}}"'.format(
+            log_template = 'Из вкладки "Видео": CRF={}, preset={}, codec={}, {}{}{}"{{name}}" -> "{{out}}"'.format(
                 crf, preset, self.cmb_codec.currentText(),
                 f'FPS={target_fps} ' if target_fps else '',
                 f'Height={target_height_p}p ' if target_height_p else '',

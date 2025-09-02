@@ -168,9 +168,9 @@ def compress_video_crf(
         ]
 
     suffix = f"crf{crf}_{preset}_{'hevc' if vcodec=='libx265' else 'h264'}"
-    if new_h:      suffix += f"_{new_h}p"
+    if new_h: suffix += f"_{new_h}p"
     elif scale_percent: suffix += f"_{scale_percent}pct"
-    if tfps:       suffix += f"_fps{int(tfps)}"
+    if tfps: suffix += f"_fps{int(tfps)}"
 
     final_file = out_p / f"{src_p.stem}_{suffix}.mp4"
     tmp_file   = out_p / f"{src_p.stem}_{suffix}.tmp.mp4"
