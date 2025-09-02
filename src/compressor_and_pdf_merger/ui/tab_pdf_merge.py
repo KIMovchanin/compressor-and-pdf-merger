@@ -92,12 +92,16 @@ class PdfMergeTab(QWidget):
 
 
     def _on_add(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Добавить файлы",
-            "",
-            "Поддерживаемые (*.pdf *.jpg *.jpeg *.png *.webp *.tif *.tiff *.bmp)"
+        filters = (
+            "Все поддерживаемые (*.pdf *.jpg *.jpeg *.png *.webp *.tif *.tiff *.bmp *.doc *.docx *.ppt *.pptx *.xls *.xlsx);;"
+            "PDF (*.pdf);;"
+            "Изображения (*.jpg *.jpeg *.png *.webp *.tif *.tiff *.bmp);;"
+            "Word (*.doc *.docx);;"
+            "PowerPoint (*.ppt *.pptx);;"
+            "Excel (*.xls *.xlsx);;"
+            "Все файлы (*)"
         )
+        files, _ = QFileDialog.getOpenFileNames(self, "Добавить файлы", "", filters)
         for f in files:
             self.list.addItem(f)
         self._maybe_autoname()
