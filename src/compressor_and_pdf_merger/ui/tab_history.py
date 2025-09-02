@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QPushButton, QHBoxLayout
 )
 from PyQt6.QtCore import QDateTime, Qt
+from compressor_and_pdf_merger.storage import db
 
 class HistoryTab(QWidget):
     def __init__(self):
@@ -40,7 +41,22 @@ class HistoryTab(QWidget):
         self.list.addItem(line)
         self.list.scrollToBottom()
 
+
+    def load_from_db(self):
+        rows = db.list_history()
+        if not rows:
+            return
+        self.list.clear()
+        self.empty_lbl.hide()
+        self.list.show()
+
+        for i, (_, ts, tab, action, src, outp) in enumerate(reversed(rows), 1):
+            line = f"{i}. [{ts}] [{tab}] {action}\n{src} -> {outp}"
+            self.list.addItem(line)
+
+
     def clear_history(self):
+        db.clear_history()
         self.list.clear()
         self.list.hide()
         self.empty_lbl.show()

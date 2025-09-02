@@ -28,6 +28,8 @@ class Settings:
             data = QByteArray(data)
         cls._s.setValue("ui/window_geometry", data)
 
+
+    # Photo
     @classmethod
     def images_default_dir(cls) -> str:
         return cls._s.value("images/default_out_dir", "", type=str)
@@ -65,3 +67,12 @@ class Settings:
     def clear_window_geometry(cls) -> None:
         cls._s.remove("ui/window_geometry")
 
+
+    # Video
+    @classmethod
+    def video_default_dir(cls) -> str:
+        return cls._s.value("video/default_out_dir", "", type=str)
+
+    @classmethod
+    def set_video_default_dir(cls, path: str) -> None:
+        cls._s.setValue("video/default_out_dir", path)

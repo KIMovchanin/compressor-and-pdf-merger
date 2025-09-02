@@ -41,6 +41,9 @@ class MainWindow(QMainWindow):
         self.image_tab.entry_logged.connect(self.history_tab.add_entry)
         self.video_tab.entry_logged.connect(self.history_tab.add_entry)
 
+        self.history_tab.load_from_db()
+
+
     def closeEvent(self, e):
         Settings.set_window_geometry(self.saveGeometry())
         super().closeEvent(e)
