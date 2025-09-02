@@ -20,34 +20,42 @@ class PdfCompressTab(QWidget):
 
         in_row = QHBoxLayout()
         self.ed_in = QLineEdit()
-        self.ed_in.setPlaceholderText("Выберите PDF…")
-        self.btn_in = QPushButton("Обзор…")
-        in_row.addWidget(self.ed_in, 1); in_row.addWidget(self.btn_in)
+        self.ed_in.setPlaceholderText("Выберите PDF...")
+        self.btn_in = QPushButton("Обзор...")
+        in_row.addWidget(self.ed_in, 1)
+        in_row.addWidget(self.btn_in)
         root.addLayout(in_row)
 
         grp = QGroupBox("Параметры сжатия")
         form = QFormLayout(grp)
 
         self.cmb_mode = QComboBox()
-        self.cmb_mode.addItems(["Бережное (без потерь)", "С картинками (Ghostscript)"])
+        self.cmb_mode.addItems(["Растрировать страницы (встроенное)", "Бережное (без потерь)"])
         self.cmb_mode.setCurrentIndex(0)
         form.addRow(QLabel("Режим:"), self.cmb_mode)
 
-        self.sp_dpi = QSpinBox(); self.sp_dpi.setRange(72, 600); self.sp_dpi.setValue(144)
-        self.sp_jpgq = QSpinBox(); self.sp_jpgq.setRange(20, 95); self.sp_jpgq.setValue(75)
+        self.sp_target_pct = QSpinBox()
+        self.sp_target_pct.setRange(0, 99)
+        self.sp_target_pct.setValue(0)
+        self.sp_target_pct.setSuffix(" %")
+        form.addRow(QLabel("Целевой размер от оригинала:"), self.sp_target_pct)
+
+        self.sp_dpi = QSpinBox()
+        self.sp_dpi.setRange(72, 600)
+        self.sp_dpi.setValue(144)
+        self.sp_jpgq = QSpinBox()
+        self.sp_jpgq.setRange(20, 95)
+        self.sp_jpgq.setValue(75)
         self.cb_gray = QCheckBox("В оттенки серого")
-
-        def _toggle(_):
-            en = (self.cmb_mode.currentIndex() == 1)
-            self.sp_dpi.setEnabled(en); self.sp_jpgq.setEnabled(en); self.cb_gray.setEnabled(en)
-        self.cmb_mode.currentIndexChanged.connect(_toggle); _toggle(0)
-
         form.addRow(QLabel("Целевой DPI:"), self.sp_dpi)
         form.addRow(QLabel("JPEG качество:"), self.sp_jpgq)
         form.addRow(self.cb_gray)
-        self.cb_strip = QCheckBox("Удалить метаданные/вложения"); self.cb_strip.setChecked(True)
+
+        self.cb_strip = QCheckBox("Удалить метаданные/вложения")
+        self.cb_strip.setChecked(True)
         form.addRow(self.cb_strip)
-        self.cb_ensure = QCheckBox("Не больше исходного"); self.cb_ensure.setChecked(True)
+        self.cb_ensure = QCheckBox("Не больше исходного")
+        self.cb_ensure.setChecked(True)
         form.addRow(self.cb_ensure)
 
         root.addWidget(grp)
@@ -56,7 +64,8 @@ class PdfCompressTab(QWidget):
         self.ed_out = QLineEdit()
         self.ed_out.setPlaceholderText("Куда сохранить...")
         self.btn_out = QPushButton("Обзор...")
-        out_row.addWidget(self.ed_out, 1); out_row.addWidget(self.btn_out)
+        out_row.addWidget(self.ed_out, 1)
+        out_row.addWidget(self.btn_out)
         root.addLayout(out_row)
 
         if Settings and hasattr(Settings, "pdf_default_dir"):
@@ -70,14 +79,23 @@ class PdfCompressTab(QWidget):
         self.btn_in.clicked.connect(self._choose_in)
         self.btn_out.clicked.connect(self._choose_out)
         self.btn_go.clicked.connect(self._on_go)
-
         self.ed_in.textChanged.connect(self._auto_out_name)
+        self.cmb_mode.currentIndexChanged.connect(self._toggle_fields)
+        self._toggle_fields(self.cmb_mode.currentIndex())
+
+
+    def _toggle_fields(self, idx: int):
+        is_raster = idx == 0
+        self.sp_target_pct.setEnabled(is_raster)
+        self.sp_dpi.setEnabled(is_raster)
+        self.sp_jpgq.setEnabled(is_raster)
+        self.cb_gray.setEnabled(is_raster)
 
 
     def _default_out_for(self, in_path: str) -> str:
         p = Path(in_path)
-        name = p.stem + "_compressed.pdf"
-        return str(p.with_name(name))
+        return str(p.with_name(p.stem + "_compressed.pdf"))
+
 
     def _auto_out_name(self, txt: str):
         if not txt or not txt.lower().endswith(".pdf"):
@@ -113,17 +131,19 @@ class PdfCompressTab(QWidget):
             QMessageBox.warning(self, "Нет пути", "Укажите путь сохранения.")
             return
         try:
-            mode = "lossless" if self.cmb_mode.currentIndex() == 0 else "images"
+            mode = "images" if self.cmb_mode.currentIndex() == 0 else "lossless"
             res = compress_pdf(
-                src, dst,
+                src,
+                dst,
                 mode=mode,
                 target_dpi=self.sp_dpi.value(),
                 jpeg_quality=self.sp_jpgq.value(),
                 grayscale=self.cb_gray.isChecked(),
                 strip_metadata=self.cb_strip.isChecked(),
                 ensure_not_larger=self.cb_ensure.isChecked(),
+                target_percent=(self.sp_target_pct.value() or None),
             )
-            text = f"PDF: сжатие ({mode}) → \"{res}\""
+            text = f"PDF: сжатие ({'растр' if mode=='images' else 'без потерь'}) → \"{res}\""
             self.entry_logged.emit(text)
             db.add_history(tab="PDF", action="Сжатие", src_name=Path(src).name, out_path=res)
             QMessageBox.information(self, "Готово", text)
