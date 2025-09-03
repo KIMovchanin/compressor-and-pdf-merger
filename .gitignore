@@ -82,3 +82,4 @@ bin/*
 
 # Документация Sphinx (если есть)
 docs/_build/
+src.zip
