@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 import json, shutil, subprocess, os
+from compressor_and_pdf_merger.core.detect import get_ffmpeg_path, get_ffprobe_path
 
 
 def _which(bin_name: str) -> str:
@@ -31,8 +32,8 @@ class AudioInfo:
     bit_rate: Optional[int]  # bps
 
 
-def probe_audio(path: str | Path) -> AudioInfo:
-    ffprobe = _which("ffprobe")
+def probe_audio(path: str | Path, ffprobe_bin: Optional[str] = None) -> AudioInfo:
+    ffprobe = ffprobe_bin or get_ffprobe_path()
     cmd = [
         ffprobe, "-v", "error",
         "-select_streams", "a:0",
@@ -71,13 +72,15 @@ def compress_audio(
     ensure_not_larger: bool = True,
     min_shrink_ratio: float = 0.98,
     step_kbps: int = 16,
+    ffmpeg_bin: Optional[str] = None,
+    ffprobe_bin: Optional[str] = None,
 ) -> str:
 
-    ffmpeg = _which("ffmpeg")
+    ffmpeg = ffmpeg_bin or get_ffmpeg_path()
     src_p = Path(src)
     out_p = Path(out_dir); out_p.mkdir(parents=True, exist_ok=True)
 
-    _ = probe_audio(src_p)
+    _ = probe_audio(src_p, ffprobe_bin=ffprobe_bin or get_ffprobe_path())
 
     af = []
     if normalize_lufs is not None:

@@ -1,54 +1,61 @@
-; setup_fixed.iss — corrected AppId escaping
+; installer/setup.iss — Compressor & PDF Merger
+; Inno Setup 6
+
 #define MyAppName "Compressor & PDF Merger"
-#define MyAppExeName "CompressorAndPDFMerger.exe"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "KIMovchanin"
 #define MyAppURL "https://github.com/KIMovchanin/compressor_and_pdf_merger"
-; Store GUID *without* braces
+#define MyAppExeName "CompressorAndPDFMerger.exe"
 #define MyAppId "59C22CD6-E2C5-44E4-83C1-AD2B71B64023"
-
-; If you built PyInstaller as ONEFILE, keep this define. For ONEDIR, comment it out.
-#define OneFile
+#define MyAppMutex "CompressorAndPDFMerger_Mutex"
 
 [Setup]
-; IMPORTANT: Use triple braces here so resulting value has literal braces and isn't treated as a {constant}
 AppId={{{#MyAppId}}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+VersionInfoVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
-DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=no
-LicenseFile=..\LICENSE
-OutputDir=Output
-OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}
-Compression=lzma2
-SolidCompression=yes
+WizardStyle=modern
 SetupIconFile=..\src\compressor_and_pdf_merger\assets\media_tool_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayName={#MyAppName}
+Compression=lzma2
+SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
-PrivilegesRequiredOverridesAllowed=dialog
+MinVersion=10.0
 PrivilegesRequired=admin
-WizardStyle=modern
+PrivilegesRequiredOverridesAllowed=dialog
+CloseApplications=yes
+RestartApplications=yes
+AppMutex={#MyAppMutex}
+OutputBaseFilename={#MyAppName}_Setup_{#MyAppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-#ifdef OneFile
 Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-#else
-Source: "..\dist\CompressorAndPDFMerger\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-#endif
+Source: "..\src\compressor_and_pdf_merger\assets\media_tool_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('..\LICENSE'))
+Source: "..\LICENSE-AGPL-3.0.txt"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('..\LICENSE-AGPL-3.0.txt'))
+Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('..\THIRD_PARTY_NOTICES.md'))
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+; создаём ярлык на рабочем столе ТЕКУЩЕГО пользователя (а не общего) — никаких прав администратора не требуется
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Type: filesandordirs; Name: "{localappdata}\User\CompressorAndPDFMerger\cache"
+; Type: filesandordirs; Name: "{localappdata}\User\CompressorAndPDFMerger\logs"

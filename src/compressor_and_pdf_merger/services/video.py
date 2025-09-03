@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import json, subprocess, shutil, os
 from typing import Optional
+from compressor_and_pdf_merger.core.detect import get_ffmpeg_path, get_ffprobe_path
 
 
 def _which(bin_name: str) -> str:
@@ -23,7 +24,7 @@ class VideoInfo:
 
 
 def probe_video(src: str, *, ffprobe_bin: Optional[str] = None) -> VideoInfo:
-    ffprobe = ffprobe_bin or _which("ffprobe")
+    ffprobe = ffprobe_bin or get_ffprobe_path()
     cmd = [
         ffprobe, "-v", "error",
         "-print_format", "json",
@@ -121,11 +122,10 @@ def compress_video_crf(
     max_crf: int = 35,
     bump_to_preset: str = "slower"
 ) -> str:
-
-    ffmpeg = ffmpeg_bin or _which("ffmpeg")
+    ffmpeg = ffmpeg_bin or get_ffmpeg_path()
     src_p = Path(src)
     out_p = Path(out_dir); out_p.mkdir(parents=True, exist_ok=True)
-    info = probe_video(src)
+    info = probe_video(src, ffprobe_bin=get_ffprobe_path())
 
     tfps = None
     if target_fps:
@@ -232,7 +232,7 @@ def resize_video_percent(src: str, out_dir: str, *, percent: int, ffmpeg_bin: Op
     new_w = _ensure_even(max(2, int(info.width * p)))
     new_h = _ensure_even(max(2, int(info.height * p)))
 
-    ffmpeg = ffmpeg_bin or _which("ffmpeg")
+    ffmpeg = ffmpeg_bin or get_ffmpeg_path()
     src_p = Path(src)
     out_p = Path(out_dir)
     out_p.mkdir(parents=True, exist_ok=True)
@@ -265,7 +265,7 @@ def change_fps_down(src: str, out_dir: str, *, target_fps: float, ffmpeg_bin: Op
     info = probe_video(src)
     tfps = min(float(target_fps), info.fps if info.fps > 0 else target_fps)
 
-    ffmpeg = ffmpeg_bin or _which("ffmpeg")
+    ffmpeg = ffmpeg_bin or get_ffmpeg_path()
     src_p = Path(src)
     out_p = Path(out_dir)
     out_p.mkdir(parents=True, exist_ok=True)

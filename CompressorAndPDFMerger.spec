@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('src\\compressor_and_pdf_merger\\assets', 'compressor_and_pdf_merger\\assets')]
-binaries = []
+datas = [('src\\compressor_and_pdf_merger\\assets', 'compressor_and_pdf_merger/assets'), ('src\\compressor_and_pdf_merger\\assets\\fonts', 'compressor_and_pdf_merger/assets/fonts')]
+binaries = [('src\\compressor_and_pdf_merger\\vendor\\ffmpeg\\bin\\ffmpeg.exe', 'vendor/ffmpeg/bin'), ('src\\compressor_and_pdf_merger\\vendor\\ffmpeg\\bin\\ffprobe.exe', 'vendor/ffmpeg/bin')]
 hiddenimports = []
 tmp_ret = collect_all('fitz')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
